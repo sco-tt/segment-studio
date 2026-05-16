@@ -16,9 +16,7 @@ interface FileInfo {
 }
 
 export function Mp3UploadModal({ isOpen, onClose, onUploadComplete }: Mp3UploadModalProps) {
-  const [isMultiTrack, setIsMultiTrack] = useState(false);
-  const [projectName, setProjectName] = useState('');
-  const [selectedFiles, setSelectedFiles] = useState<FileInfo[]>([]);
+  const [selectedFile, setSelectedFile] = useState<FileInfo | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState('');
   const [isDragOver, setIsDragOver] = useState(false);
@@ -27,9 +25,7 @@ export function Mp3UploadModal({ isOpen, onClose, onUploadComplete }: Mp3UploadM
 
   const handleClose = useCallback(() => {
     if (!isUploading) {
-      setSelectedFiles([]);
-      setProjectName('');
-      setIsMultiTrack(false);
+      setSelectedFile(null);
       setUploadStatus('');
       onClose();
     }
@@ -38,19 +34,20 @@ export function Mp3UploadModal({ isOpen, onClose, onUploadComplete }: Mp3UploadM
   const handleFileSelect = useCallback(async () => {
     try {
       setUploadStatus('📁 Opening file dialog...');
-      const filePaths = await uploadService.selectAudioFiles(isMultiTrack);
+      const filePaths = await uploadService.selectAudioFiles(false); // Always single file
       if (filePaths.length > 0) {
-        const fileInfos: FileInfo[] = filePaths.map(path => {
-          const fileName = path.split(/[/\\]/).pop() || path; // Handle both / and \ path separators
-          const trackName = fileName.replace(/\.[^/.]+$/, ''); // Remove extension
-          return {
-            path,
-            name: fileName,
-            trackName
-          };
-        });
-        setSelectedFiles(fileInfos);
-        setUploadStatus('');
+        const filePath = filePaths[0]; // Take only the first file
+        const fileName = filePath.split(/[/\\]/).pop() || filePath;
+        const trackName = fileName.replace(/\.[^/.]+$/, ''); // Remove extension
+
+        const fileInfo: FileInfo = {
+          path: filePath,
+          name: fileName,
+          trackName
+        };
+
+        setSelectedFile(fileInfo);
+        setUploadStatus(`📄 Selected: ${fileName}`);
       } else {
         setUploadStatus('');
       }
@@ -58,7 +55,7 @@ export function Mp3UploadModal({ isOpen, onClose, onUploadComplete }: Mp3UploadM
       console.error('Failed to select files:', error);
       setUploadStatus(`❌ Failed to select files: ${error instanceof Error ? error.message : String(error)}`);
     }
-  }, [isMultiTrack, uploadService]);
+  }, [uploadService]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -84,8 +81,8 @@ export function Mp3UploadModal({ isOpen, onClose, onUploadComplete }: Mp3UploadM
       return;
     }
 
-    if (!isMultiTrack && audioFiles.length > 1) {
-      setUploadStatus('❌ Multiple files selected but multi-track mode is disabled');
+    if (audioFiles.length > 1) {
+      setUploadStatus('❌ Only one MP3 file can be uploaded at a time');
       return;
     }
 
@@ -100,50 +97,26 @@ export function Mp3UploadModal({ isOpen, onClose, onUploadComplete }: Mp3UploadM
       };
     });
 
-    setSelectedFiles(fileInfos);
+    setSelectedFile(fileInfos[0]);
     setUploadStatus('');
-  }, [isMultiTrack]);
-
-  const updateTrackName = useCallback((index: number, newName: string) => {
-    setSelectedFiles(prev => prev.map((file, i) =>
-      i === index ? { ...file, trackName: newName } : file
-    ));
   }, []);
 
-  const removeFile = useCallback((index: number) => {
-    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
-  }, []);
 
   const handleUpload = useCallback(async () => {
-    if (selectedFiles.length === 0) {
-      setUploadStatus('❌ No files selected');
-      return;
-    }
-
-    if (isMultiTrack && !projectName.trim()) {
-      setUploadStatus('❌ Project name is required for multi-track uploads');
+    if (!selectedFile) {
+      setUploadStatus('❌ No file selected');
       return;
     }
 
     setIsUploading(true);
-    setUploadStatus('📤 Uploading files...');
+    setUploadStatus('📤 Uploading file...');
 
     try {
       let routineId: string;
 
-      if (isMultiTrack) {
-        // Upload as stem group
-        const filePaths = selectedFiles.map(f => f.path);
-        const trackNames = selectedFiles.map(f => f.trackName);
-
-        routineId = await uploadService.uploadStemGroup(projectName.trim(), filePaths, trackNames);
-        setUploadStatus(`✅ Uploaded stem group "${projectName}" with ${selectedFiles.length} tracks!`);
-      } else {
-        // Upload single file
-        const file = selectedFiles[0];
-        routineId = await uploadService.uploadSingleFile(file.path, file.trackName);
-        setUploadStatus(`✅ Uploaded "${file.trackName}" successfully!`);
-      }
+      // Upload single file
+      routineId = await uploadService.uploadSingleFile(selectedFile.path, selectedFile.trackName);
+      setUploadStatus(`✅ Uploaded "${selectedFile.trackName}" successfully!`);
 
       // Wait a moment to show success message, then close and notify parent
       setTimeout(() => {
@@ -156,44 +129,15 @@ export function Mp3UploadModal({ isOpen, onClose, onUploadComplete }: Mp3UploadM
       setUploadStatus(`❌ Upload failed: ${error}`);
       setIsUploading(false);
     }
-  }, [selectedFiles, isMultiTrack, projectName, uploadService, onUploadComplete, handleClose]);
+  }, [selectedFile, uploadService, onUploadComplete, handleClose]);
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title="📁 Upload MP3 Files">
+    <Modal isOpen={isOpen} onClose={handleClose} title="📁 Upload MP3 File">
       <div className="mp3-upload-modal">
-        {/* Multi-track toggle */}
-        <div className="upload-mode-section">
-          <label className="mode-checkbox">
-            <input
-              type="checkbox"
-              checked={isMultiTrack}
-              onChange={(e) => {
-                setIsMultiTrack(e.target.checked);
-                setSelectedFiles([]);
-                setProjectName('');
-              }}
-              disabled={isUploading}
-            />
-            <span className="checkmark"></span>
-            Upload multiple tracks (stems/parts)
-          </label>
+        {/* Upload info */}
+        <div className="upload-info">
+          <p>📄 Upload a single MP3 file for this song</p>
         </div>
-
-        {/* Project name for multi-track */}
-        {isMultiTrack && (
-          <div className="project-name-section">
-            <label htmlFor="project-name">Song/Project Name:</label>
-            <input
-              id="project-name"
-              type="text"
-              value={projectName}
-              onChange={(e) => setProjectName(e.target.value)}
-              placeholder="e.g., Hotel California"
-              disabled={isUploading}
-              className="project-name-input"
-            />
-          </div>
-        )}
 
         {/* File drop zone */}
         <div
@@ -204,55 +148,41 @@ export function Mp3UploadModal({ isOpen, onClose, onUploadComplete }: Mp3UploadM
           onClick={!isUploading ? handleFileSelect : undefined}
         >
           <div className="drop-zone-content">
-            {selectedFiles.length === 0 ? (
+            {!selectedFile ? (
               <>
                 <div className="drop-zone-icon">🎵</div>
-                <h3>
-                  {isMultiTrack
-                    ? "Drop multiple MP3 files here"
-                    : "Drop MP3 file here"
-                  }
-                </h3>
+                <h3>Drop MP3 file here</h3>
                 <p>or click to browse</p>
                 <div className="supported-formats">
                   Supported: MP3, M4A, WAV, OGG, FLAC
                 </div>
               </>
             ) : (
-              <div className="selected-files">
-                <h3>📂 Selected Files ({selectedFiles.length})</h3>
-                <div className="file-list">
-                  {selectedFiles.map((file, index) => (
-                    <div key={index} className="file-item">
-                      <div className="file-info">
-                        <span className="file-icon">🎵</span>
-                        <span className="file-name">{file.name}</span>
-                      </div>
-                      <input
-                        type="text"
-                        value={file.trackName}
-                        onChange={(e) => updateTrackName(index, e.target.value)}
-                        placeholder="Track name"
-                        disabled={isUploading}
-                        className="track-name-input"
-                      />
-                      {!isUploading && (
-                        <button
-                          onClick={() => removeFile(index)}
-                          className="remove-file-btn"
-                          title="Remove file"
-                        >
-                          ×
-                        </button>
-                      )}
-                    </div>
-                  ))}
+              <div className="selected-file">
+                <h3>📂 Selected File</h3>
+                <div className="file-item">
+                  <div className="file-info">
+                    <span className="file-icon">🎵</span>
+                    <span className="file-name">{selectedFile.name}</span>
+                  </div>
+                  <input
+                    type="text"
+                    value={selectedFile.trackName}
+                    onChange={(e) => setSelectedFile({ ...selectedFile, trackName: e.target.value })}
+                    placeholder="Song name"
+                    disabled={isUploading}
+                    className="track-name-input"
+                  />
+                  {!isUploading && (
+                    <button
+                      onClick={() => setSelectedFile(null)}
+                      className="remove-file-btn"
+                      title="Remove file"
+                    >
+                      ×
+                    </button>
+                  )}
                 </div>
-                {!isUploading && (
-                  <button onClick={handleFileSelect} className="add-more-btn">
-                    + Add More Files
-                  </button>
-                )}
               </div>
             )}
           </div>
@@ -276,13 +206,13 @@ export function Mp3UploadModal({ isOpen, onClose, onUploadComplete }: Mp3UploadM
           </button>
           <button
             onClick={handleUpload}
-            disabled={selectedFiles.length === 0 || isUploading || (isMultiTrack && !projectName.trim())}
+            disabled={!selectedFile || isUploading}
             className="upload-btn"
           >
             {isUploading ? (
               <>⏳ Uploading...</>
             ) : (
-              <>📤 Upload {selectedFiles.length > 0 ? `(${selectedFiles.length} file${selectedFiles.length > 1 ? 's' : ''})` : ''}</>
+              <>📤 Upload{selectedFile ? ` "${selectedFile.name}"` : ''}</>
             )}
           </button>
         </div>

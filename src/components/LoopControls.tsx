@@ -107,6 +107,11 @@ export function LoopControls({
   }, [currentTime, onSetLoopEnd]);
 
   const handleSaveLoop = useCallback(() => {
+    if (!currentSongId) {
+      alert('Please save the video as a song first before creating segments. Click "💾 Save Song" in the sidebar.');
+      return;
+    }
+
     if (tempStart !== null && tempEnd !== null) {
       if (tempEnd > tempStart) {
         // Auto-generate name if none provided
@@ -118,9 +123,14 @@ export function LoopControls({
         alert('End time must be after start time');
       }
     }
-  }, [tempStart, tempEnd, newLoopName, onSaveLoop]);
+  }, [tempStart, tempEnd, newLoopName, onSaveLoop, currentSongId]);
 
   const handleQuickSave = useCallback(() => {
+    if (!currentSongId) {
+      alert('Please save the video as a song first before creating segments. Click "💾 Save Song" in the sidebar.');
+      return;
+    }
+
     if (tempStart !== null && tempEnd !== null) {
       if (tempEnd > tempStart) {
         // Auto-save with generated name
@@ -131,7 +141,7 @@ export function LoopControls({
         alert('End time must be after start time');
       }
     }
-  }, [tempStart, tempEnd, onSaveLoop]);
+  }, [tempStart, tempEnd, onSaveLoop, currentSongId]);
 
   const handleClearTemp = useCallback(() => {
     // If currently looping a temp loop, stop it
@@ -389,6 +399,11 @@ export function LoopControls({
                     </div>
                   )}
                 </div>
+                {!currentSongId && (
+                  <div className="save-song-reminder">
+                    <p>💡 Save the video as a song first to create segments</p>
+                  </div>
+                )}
                 <div className="temp-loop-actions">
                   {hasValidTempLoop ? (
                     <>
@@ -415,10 +430,28 @@ export function LoopControls({
                         </button>
                       </div>
                       <div className="temp-action-row">
-                        <button onClick={handleQuickSave} className="temp-save">
+                        <button
+                          onClick={handleQuickSave}
+                          className="temp-save"
+                          disabled={!currentSongId}
+                          title={!currentSongId ? "Save the video as a song first" : "Save segment"}
+                          style={{
+                            opacity: !currentSongId ? 0.5 : 1,
+                            cursor: !currentSongId ? 'not-allowed' : 'pointer'
+                          }}
+                        >
                           💾 Save
                         </button>
-                        <button onClick={() => setShowSaveDialog(true)} className="temp-save-custom">
+                        <button
+                          onClick={() => setShowSaveDialog(true)}
+                          className="temp-save-custom"
+                          disabled={!currentSongId}
+                          title={!currentSongId ? "Save the video as a song first" : "Save segment with custom name"}
+                          style={{
+                            opacity: !currentSongId ? 0.5 : 1,
+                            cursor: !currentSongId ? 'not-allowed' : 'pointer'
+                          }}
+                        >
                           ✏️ Custom
                         </button>
                       </div>

@@ -115,6 +115,10 @@ export function useLoopControlsSQLite({ playerRef, isPlaying }: { playerRef: any
     try {
       setError(null);
 
+      if (!routineId) {
+        throw new Error('Cannot save segment: Video must be saved as a song first');
+      }
+
       const segmentData: CreateLoopSegment = {
         song_routine_id: routineId,
         name,
@@ -126,12 +130,8 @@ export function useLoopControlsSQLite({ playerRef, isPlaying }: { playerRef: any
 
       await loopSegmentRepo.create(segmentData);
 
-      // Reload segments
-      if (routineId) {
-        await loadSegmentsForRoutine(routineId);
-      } else {
-        await loadStandaloneSegments();
-      }
+      // Reload segments for this routine
+      await loadSegmentsForRoutine(routineId);
 
       // Clear temp points
       setTempStart(null);
@@ -140,11 +140,16 @@ export function useLoopControlsSQLite({ playerRef, isPlaying }: { playerRef: any
       setError(err instanceof Error ? err.message : 'Failed to save segment');
       throw err;
     }
-  }, [loadStandaloneSegments, loadSegmentsForRoutine]);
+  }, [loadSegmentsForRoutine]);
 
   const deleteLoop = useCallback(async (loopId: string) => {
     try {
       setError(null);
+
+      // Find the loop to get its routine ID for reloading
+      const loopToDelete = loops.find(loop => loop.id === loopId);
+      const routineId = loopToDelete?.song_routine_id;
+
       await loopSegmentRepo.delete(loopId);
 
       // If we're deleting the active loop, clear it
@@ -153,13 +158,15 @@ export function useLoopControlsSQLite({ playerRef, isPlaying }: { playerRef: any
         setIsLooping(false);
       }
 
-      // Reload segments
-      await loadStandaloneSegments();
+      // Reload segments for this routine
+      if (routineId) {
+        await loadSegmentsForRoutine(routineId);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete segment');
       throw err;
     }
-  }, [activeLoop, loadStandaloneSegments]);
+  }, [activeLoop, loops, loadSegmentsForRoutine]);
 
   const selectLoop = useCallback((loop: LoopSegment | null) => {
     setActiveLoop(loop);
@@ -255,6 +262,11 @@ export function useLoopControlsSQLite({ playerRef, isPlaying }: { playerRef: any
   const updateLoop = useCallback(async (loopId: string, updates: Partial<LoopSegment>) => {
     try {
       setError(null);
+
+      // Find the loop to get its routine ID for reloading
+      const loopToUpdate = loops.find(loop => loop.id === loopId);
+      const routineId = loopToUpdate?.song_routine_id;
+
       await loopSegmentRepo.update(loopId, updates);
 
       // If updating the active loop, update it locally too
@@ -262,13 +274,15 @@ export function useLoopControlsSQLite({ playerRef, isPlaying }: { playerRef: any
         setActiveLoop({ ...activeLoop, ...updates });
       }
 
-      // Reload segments
-      await loadStandaloneSegments();
+      // Reload segments for this routine
+      if (routineId) {
+        await loadSegmentsForRoutine(routineId);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update segment');
       throw err;
     }
-  }, [activeLoop, loadStandaloneSegments]);
+  }, [activeLoop, loops, loadSegmentsForRoutine]);
 
   return {
     loops,

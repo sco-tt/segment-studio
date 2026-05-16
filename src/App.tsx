@@ -10,7 +10,7 @@ import { Mp3Library } from "./components/Mp3Library/Mp3Library";
 import { MySongsModal } from "./components/MySongsModal/MySongsModal";
 import { CustomFieldsModal } from "./components/CustomFieldsModal/CustomFieldsModal";
 import { ToolsModal } from "./components/ToolsModal/ToolsModal";
-import { AudioPlayer } from "./components/AudioPlayer/AudioPlayer";
+import { AudioPlayer, AudioPlayerHandle } from "./components/AudioPlayer/AudioPlayer";
 import { SetlistPrinterModal } from "./components/SetlistPrinterModal/SetlistPrinterModal";
 import { SongInfoPanel } from "./components/SongInfoPanel/SongInfoPanel";
 import { Toast } from "./components/Toast/Toast";
@@ -21,6 +21,7 @@ import { useSavedSongs } from "./hooks/useSavedSongs";
 import { TagAutocomplete } from "./components/TagAutocomplete/TagAutocomplete";
 import { TagsService } from "./services/tagsService";
 import { SongRoutine } from "./repositories/songRoutineRepository";
+import { databaseService } from "./services/databaseService";
 // Inline video ID extraction function
 function extractVideoId(url: string): string {
   const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
@@ -56,10 +57,12 @@ function App() {
   const [newTag, setNewTag] = useState('');
   const [volume, setVolume] = useState(100);
   const [currentSong, setCurrentSong] = useState<SongRoutine | null>(null);
+  const [mp3ContentType, setMp3ContentType] = useState<'single_track' | 'stem_group'>('single_track');
   const [mp3LibraryRefresh, setMp3LibraryRefresh] = useState(0);
 
 
   const playerRef = useRef<YouTubePlayerHandle>(null);
+  const audioPlayerRef = useRef<AudioPlayerHandle>(null);
 
   // Get volume settings from localStorage
   const getVolumeSettings = useCallback((): { defaultVolume: number; onlyForNewVideos: boolean } => {
@@ -114,7 +117,12 @@ function App() {
 
 
   const togglePlayPause = useCallback(() => {
-    if (playerRef.current) {
+    if (currentSong?.url_source === 'mp3' && audioPlayerRef.current) {
+      // Control MP3 playback
+      audioPlayerRef.current.playPause();
+      setIsPlaying(!isPlaying);
+    } else if (playerRef.current) {
+      // Control YouTube playback
       if (isPlaying) {
         playerRef.current.pauseVideo();
       } else {
@@ -122,7 +130,7 @@ function App() {
       }
       setIsPlaying(!isPlaying);
     }
-  }, [isPlaying]);
+  }, [isPlaying, currentSong]);
 
   const changeSpeed = useCallback((speed: number) => {
     if (playerRef.current) {
@@ -132,11 +140,16 @@ function App() {
   }, []);
 
   const changeVolume = useCallback((newVolume: number) => {
-    if (playerRef.current) {
+    if (currentSong?.url_source === 'mp3' && audioPlayerRef.current) {
+      // Control MP3 volume
+      audioPlayerRef.current.setVolume(newVolume);
+      setVolume(newVolume);
+    } else if (playerRef.current) {
+      // Control YouTube volume
       playerRef.current.setVolume(newVolume);
       setVolume(newVolume);
     }
-  }, []);
+  }, [currentSong]);
 
   const handlePlayerReady = useCallback(() => {
     console.log('Player is ready for control');
@@ -242,9 +255,36 @@ function App() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  // Determine if MP3 content is a single track or stem group
+  const determineMp3ContentType = useCallback(async (mp3ContentId: string): Promise<'single_track' | 'stem_group'> => {
+    try {
+      const result = await databaseService.executeQuery(
+        `SELECT 1 FROM stem_groups WHERE id = ?`,
+        [mp3ContentId]
+      );
+      return result.length > 0 ? 'stem_group' : 'single_track';
+    } catch (error) {
+      console.error('Failed to determine MP3 content type:', error);
+      return 'single_track'; // fallback to single track
+    }
+  }, []);
+
   // Essential speeds from settings - reactive to settings changes
   const [essentialSpeeds, setEssentialSpeeds] = useState<number[]>([0.5, 0.7, 0.8, 0.9, 1.0]);
   const allSpeedOptions = [0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
+
+  // Sync volume with AudioPlayer when MP3 is loaded
+  useEffect(() => {
+    if (currentSong?.url_source === 'mp3' && audioPlayerRef.current) {
+      // Small delay to ensure AudioPlayer is fully loaded
+      const timer = setTimeout(() => {
+        if (audioPlayerRef.current) {
+          audioPlayerRef.current.setVolume(volume);
+        }
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [currentSong, volume]);
 
   // Load speeds from settings on component mount and settings changes
   useEffect(() => {
@@ -494,8 +534,23 @@ function App() {
 
         setVideoId(''); // Clear video ID since this is MP3
         setVideoUrl(''); // Clear video URL since this is MP3
+
+        // Determine content type (single track vs stem group)
+        if (songData.mp3_content_id) {
+          const contentType = await determineMp3ContentType(songData.mp3_content_id);
+          setMp3ContentType(contentType);
+          console.log('MP3 Content Type:', contentType, 'for ID:', songData.mp3_content_id);
+        }
+
         setCurrentSong(songData);
         setCurrentSpeed(1.0);
+
+        // Set volume for MP3 based on settings
+        const { defaultVolume, onlyForNewVideos } = getVolumeSettings();
+        const volumeToUse = onlyForNewVideos && songData?.volume ? songData.volume : defaultVolume;
+        setVolume(volumeToUse);
+
+        // Volume will be applied to AudioPlayer via the ref after it loads
 
         // Stop any active looping when switching songs
         if (isLooping) {
@@ -664,6 +719,14 @@ function App() {
         // Instead we'll need to handle MP3 playback differently
         setVideoId(''); // Clear video ID since this is MP3
         setVideoUrl(''); // Clear video URL since this is MP3
+
+        // Determine content type (single track vs stem group)
+        if (routine.mp3_content_id) {
+          const contentType = await determineMp3ContentType(routine.mp3_content_id);
+          setMp3ContentType(contentType);
+          console.log('Uploaded MP3 Content Type:', contentType, 'for ID:', routine.mp3_content_id);
+        }
+
         setCurrentSong(routine);
         setCurrentSpeed(1.0);
 
@@ -719,14 +782,14 @@ function App() {
           <div className="video-section">
               <div className="controls-sidebar">
                 <div className="playback-row">
-                  <span>Current Time:<br/>{videoId ? formatTime(currentTime) : '--:--'}</span>
+                  <span>Current Time:<br/>{(videoId || currentSong?.url_source === 'mp3') ? formatTime(currentTime) : '--:--'}</span>
                   <button
                     onClick={togglePlayPause}
                     className="play-pause-btn"
-                    disabled={!videoId}
-                    style={{ opacity: !videoId ? 0.5 : 1 }}
+                    disabled={!videoId && !(currentSong?.url_source === 'mp3')}
+                    style={{ opacity: (!videoId && !(currentSong?.url_source === 'mp3')) ? 0.5 : 1 }}
                   >
-                    {!videoId ? '▶️ Play' : isPlaying ? '⏸️ Pause' : '▶️ Play'}
+                    {(!videoId && !(currentSong?.url_source === 'mp3')) ? '▶️ Play' : isPlaying ? '⏸️ Pause' : '▶️ Play'}
                   </button>
                 </div>
 
@@ -742,8 +805,8 @@ function App() {
                     value={volume}
                     onChange={(e) => changeVolume(Number(e.target.value))}
                     className="volume-slider"
-                    disabled={!videoId}
-                    style={{ opacity: !videoId ? 0.5 : 1 }}
+                    disabled={!videoId && !(currentSong?.url_source === 'mp3')}
+                    style={{ opacity: (!videoId && !(currentSong?.url_source === 'mp3')) ? 0.5 : 1 }}
                   />
                 </div>
 
@@ -992,13 +1055,17 @@ function App() {
                 ) : currentSong && currentSong.url_source === 'mp3' ? (
                   <div className="audio-player-container">
                     <AudioPlayer
+                      ref={audioPlayerRef}
                       title={currentSong.title}
-                      contentType="single_track"
+                      contentType={mp3ContentType}
                       mp3ContentId={currentSong.mp3_content_id}
                       onError={(error) => {
                         console.error('AudioPlayer error:', error);
                         showToastNotification(`❌ Player error: ${error}`);
                       }}
+                      onTimeUpdate={handleTimeUpdate}
+                      onDurationChange={handleDurationChange}
+                      onPlayStateChange={setIsPlaying}
                     />
                   </div>
                 ) : (

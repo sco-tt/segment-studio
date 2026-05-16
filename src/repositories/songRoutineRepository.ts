@@ -11,6 +11,7 @@ export interface SongRoutine {
   notes: string;
   freeform_notes: string;
   volume: number;
+  mp3_content_id?: string;
   tags_json?: string;
   loops_json?: string;
   steps_json?: string;
@@ -30,6 +31,7 @@ export interface CreateSongRoutine {
   notes?: string;
   freeform_notes?: string;
   volume?: number;
+  mp3_content_id?: string;
   tags_json?: string;
   loops_json?: string;
   steps_json?: string;
@@ -62,6 +64,7 @@ export class SongRoutineRepository {
       routine.notes || '',
       routine.freeform_notes || '',
       routine.volume || 100,
+      routine.mp3_content_id || null,
       routine.tags_json || '[]',
       now,
       now,
@@ -73,8 +76,8 @@ export class SongRoutineRepository {
       console.log('SongRoutineRepository: Executing SQL query...');
       await databaseService.executeNonQuery(
         `INSERT INTO song_routines
-         (id, url, url_source, title, artist, duration, notes, freeform_notes, volume, tags_json, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         (id, url, url_source, title, artist, duration, notes, freeform_notes, volume, mp3_content_id, tags_json, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         params
       );
 

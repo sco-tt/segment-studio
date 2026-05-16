@@ -574,9 +574,12 @@ export function MySongsModal({ isOpen, onClose, onSongSelect, initialTagFilter }
           ) : (
             filteredAndSortedSongs.map((song) => (
               <div key={song.id} className="song-item">
-                <div className="song-thumbnail">
+                <div className={`song-thumbnail ${song.url_source}`}>
                   <div className="thumbnail-placeholder">
-                    🎵
+                    {song.url_source === 'mp3' ? '🎼' : '🎥'}
+                  </div>
+                  <div className="source-badge">
+                    {song.url_source === 'mp3' ? 'MP3' : 'YT'}
                   </div>
                 </div>
 
