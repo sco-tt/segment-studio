@@ -132,6 +132,12 @@
   border-color: #3b82f6;
 }
 
+.tag-autocomplete-input {
+  flex: 1;
+  min-width: 0;
+  max-width: 200px;
+}
+
 .add-tag-btn {
   padding: 8px 12px;
   background: #3b82f6;

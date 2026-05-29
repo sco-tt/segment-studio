@@ -287,19 +287,24 @@
 }
 
 .upload-btn {
-  background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+  background: #3b82f6;
   color: white;
+  border: 1px solid #3b82f6;
+  opacity: 1;
 }
 
 .upload-btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, #0056b3 0%, #004085 100%);
+  background: #2563eb;
+  border-color: #2563eb;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 }
 
 .upload-btn:disabled {
-  background: #6c757d;
-  opacity: 0.6;
+  background: #9ca3af;
+  border-color: #9ca3af;
+  color: white;
+  opacity: 1;
   cursor: not-allowed;
   transform: none;
   box-shadow: none;

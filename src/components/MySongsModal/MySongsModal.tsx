@@ -16,7 +16,7 @@ interface MySongsModalProps {
 
 export function MySongsModal({ isOpen, onClose, onSongSelect, initialTagFilter }: MySongsModalProps) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState<'recent' | 'title' | 'artist' | 'created'>('recent');
+  const [sortBy, setSortBy] = useState<'recent' | 'recent_asc' | 'title' | 'artist' | 'created'>('recent');
   const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
   const [editingSong, setEditingSong] = useState<SongRoutine | null>(null);
   const [isImporting, setIsImporting] = useState(false);
@@ -28,6 +28,7 @@ export function MySongsModal({ isOpen, onClose, onSongSelect, initialTagFilter }
   const [customFieldNames, setCustomFieldNames] = useState<Record<string, string>>({});
   const [deleteConfirmation, setDeleteConfirmation] = useState<{ songId: string; songTitle: string } | null>(null);
   const [fetchYouTubeTitles, setFetchYouTubeTitles] = useState(true);
+  const [showRandomTagOptions, setShowRandomTagOptions] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const {
@@ -111,6 +112,11 @@ export function MySongsModal({ isOpen, onClose, onSongSelect, initialTagFilter }
             if (!a.last_practiced) return 1;
             if (!b.last_practiced) return -1;
             return new Date(b.last_practiced).getTime() - new Date(a.last_practiced).getTime();
+          case 'recent_asc':
+            if (!a.last_practiced && !b.last_practiced) return 0;
+            if (!a.last_practiced) return 1;
+            if (!b.last_practiced) return -1;
+            return new Date(a.last_practiced).getTime() - new Date(b.last_practiced).getTime();
           case 'title':
             return (a.title || a.name).localeCompare(b.title || b.name);
           case 'artist':
@@ -469,7 +475,8 @@ export function MySongsModal({ isOpen, onClose, onSongSelect, initialTagFilter }
               onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
               className="sort-select"
             >
-              <option value="recent">Last Practiced</option>
+              <option value="recent">Last Practiced (Recent)</option>
+              <option value="recent_asc">Last Practiced (Oldest)</option>
               <option value="title">Title</option>
               <option value="artist">Artist</option>
               <option value="created">Date Added</option>
@@ -499,21 +506,35 @@ export function MySongsModal({ isOpen, onClose, onSongSelect, initialTagFilter }
         {savedSongs.length > 0 && (
           <div className="random-load-section">
             <div className="random-load-actions">
-              <button
-                onClick={handleRandomLoad}
-                className="random-load-btn"
-                title="Load a random song from your collection"
-              >
-                🎲 Load Random
-              </button>
-              {getAllTags.length > 0 && (
+              <div className="random-buttons">
+                <button
+                  onClick={handleRandomLoad}
+                  className="random-load-btn"
+                  title="Load a random song from your collection"
+                >
+                  🎲 Load Random
+                </button>
+                {getAllTags.length > 0 && (
+                  <button
+                    onClick={() => setShowRandomTagOptions(!showRandomTagOptions)}
+                    className={`random-tag-toggle-btn ${showRandomTagOptions ? 'active' : ''}`}
+                    title="Show tag options for random loading"
+                  >
+                    🏷️ Load Random from Tag {showRandomTagOptions ? '▲' : '▼'}
+                  </button>
+                )}
+              </div>
+              {getAllTags.length > 0 && showRandomTagOptions && (
                 <div className="random-tag-section">
-                  <span className="random-tag-label">Load random from tag:</span>
+                  <span className="random-tag-label">Choose a tag:</span>
                   <div className="random-tag-buttons">
                     {getAllTags.map((tag) => (
                       <button
                         key={tag}
-                        onClick={() => handleRandomFromTag(tag)}
+                        onClick={() => {
+                          handleRandomFromTag(tag);
+                          setShowRandomTagOptions(false);
+                        }}
                         className="random-tag-btn"
                         title={`Load a random song tagged with "${tag}"`}
                       >
@@ -574,19 +595,13 @@ export function MySongsModal({ isOpen, onClose, onSongSelect, initialTagFilter }
           ) : (
             filteredAndSortedSongs.map((song) => (
               <div key={song.id} className="song-item">
-                <div className={`song-thumbnail ${song.url_source}`}>
-                  <div className="thumbnail-placeholder">
-                    {song.url_source === 'mp3' ? '🎼' : '🎥'}
-                  </div>
-                  <div className="source-badge">
-                    {song.url_source === 'mp3' ? 'MP3' : 'YT'}
-                  </div>
-                </div>
-
                 <div className="song-info">
                   <div className="song-primary">
                     <h3 className="song-title">{song.title}</h3>
                     <p className="song-artist">{song.artist}</p>
+                    <div className={`source-icon ${song.url_source}`}>
+                      {song.url_source === 'mp3' ? 'MP3' : song.url_source === 'youtube' ? 'YT' : 'VIM'}
+                    </div>
                   </div>
 
                   <div className="song-details">
@@ -597,6 +612,37 @@ export function MySongsModal({ isOpen, onClose, onSongSelect, initialTagFilter }
                         Practiced {formatDate(song.last_practiced)}
                       </span>
                     )}
+                  </div>
+                </div>
+
+                <div className="song-right">
+                  <div className="song-actions">
+                    <button
+                      onClick={() => handleSongSelect(song)}
+                      className="action-btn primary"
+                      title="Load and play this song"
+                    >
+                      ▶️ Load
+                    </button>
+                    <button
+                      onClick={() => handleEdit(song)}
+                      className="action-btn secondary"
+                      title="Edit song details"
+                    >
+                      ✏️ Edit
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleDelete(song.id);
+                      }}
+                      className="action-btn danger"
+                      title="Delete this song"
+                      type="button"
+                    >
+                      🗑️
+                    </button>
                   </div>
 
                   <div className="song-tags">
@@ -618,35 +664,6 @@ export function MySongsModal({ isOpen, onClose, onSongSelect, initialTagFilter }
                       </div>
                     )}
                   </div>
-                </div>
-
-                <div className="song-actions">
-                  <button
-                    onClick={() => handleSongSelect(song)}
-                    className="action-btn primary"
-                    title="Load and play this song"
-                  >
-                    ▶️ Load
-                  </button>
-                  <button
-                    onClick={() => handleEdit(song)}
-                    className="action-btn secondary"
-                    title="Edit song details"
-                  >
-                    ✏️ Edit
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      handleDelete(song.id);
-                    }}
-                    className="action-btn danger"
-                    title="Delete this song"
-                    type="button"
-                  >
-                    🗑️
-                  </button>
                 </div>
               </div>
             ))
