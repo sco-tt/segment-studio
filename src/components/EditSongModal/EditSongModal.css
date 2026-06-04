@@ -132,10 +132,9 @@
   border-color: #3b82f6;
 }
 
-.tag-autocomplete-input {
+.tag-input-wrapper {
   flex: 1;
   min-width: 0;
-  max-width: 200px;
 }
 
 .add-tag-btn {

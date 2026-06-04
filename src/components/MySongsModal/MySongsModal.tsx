@@ -139,21 +139,15 @@ export function MySongsModal({ isOpen, onClose, onSongSelect, initialTagFilter }
     setEditingSong(song);
   };
 
-  const handleSaveEdit = async (updatedSong: SongRoutine) => {
-    try {
-      await updateSong(updatedSong.id, {
-        name: updatedSong.name,
-        title: updatedSong.title,
-        artist: updatedSong.artist,
-        notes: updatedSong.notes,
-        freeform_notes: updatedSong.freeform_notes,
-        volume: updatedSong.volume
-      });
-      setEditingSong(null);
-    } catch (error) {
-      console.error('Error saving song edit:', error);
-      alert('Error saving changes');
-    }
+  const handleSaveEdit = async (updatedSong: SongRoutine): Promise<void> => {
+    await updateSong(updatedSong.id, {
+      title: updatedSong.title,
+      artist: updatedSong.artist,
+      notes: updatedSong.notes,
+      freeform_notes: updatedSong.freeform_notes,
+      volume: updatedSong.volume,
+      tags_json: updatedSong.tags_json
+    });
   };
 
   const handleTagClick = (tag: string) => {

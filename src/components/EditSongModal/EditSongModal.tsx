@@ -11,7 +11,7 @@ interface EditSongModalProps {
   isOpen: boolean;
   onClose: () => void;
   song: SongRoutine | null;
-  onSave: (updatedSong: SongRoutine) => void;
+  onSave: (updatedSong: SongRoutine) => Promise<void>;
 }
 
 export function EditSongModal({ isOpen, onClose, song, onSave }: EditSongModalProps) {
@@ -58,13 +58,11 @@ export function EditSongModal({ isOpen, onClose, song, onSave }: EditSongModalPr
     }
   }, [song]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!song) return;
 
-    // Convert custom field values back to JSON for freeform_notes
     let finalFreeformNotes = freeformNotes.trim();
     if (Object.keys(customFieldValues).length > 0) {
-      // Filter out empty values
       const nonEmptyCustomFields = Object.fromEntries(
         Object.entries(customFieldValues).filter(([_, value]) => value !== '' && value !== null && value !== undefined)
       );
@@ -83,60 +81,37 @@ export function EditSongModal({ isOpen, onClose, song, onSave }: EditSongModalPr
       tags_json: JSON.stringify(tags)
     };
 
-    // Clear tags cache to ensure fresh autocomplete data
     TagsService.getInstance().clearCache();
 
-    onSave(updatedSong);
-    onClose();
+    try {
+      await onSave(updatedSong);
+      onClose();
+    } catch {
+      alert('Error saving changes');
+    }
   };
 
-  const addTag = async (tag: string) => {
+  const addTag = (tag: string) => {
     const trimmedTag = tag.trim();
     if (trimmedTag && !tags.includes(trimmedTag)) {
       const newTags = [...tags, trimmedTag];
       setTags(newTags);
-
-      // Add to tags service cache for immediate availability
       TagsService.getInstance().addToCache([trimmedTag]);
-
-      // Auto-save tags immediately
-      if (song?.id) {
-        try {
-          const updatedSong = { ...song, tags_json: JSON.stringify(newTags) };
-          onSave(updatedSong);
-          console.log('Tags auto-saved in EditSongModal for song:', song.id);
-        } catch (error) {
-          console.error('Failed to auto-save tags in EditSongModal:', error);
-        }
-      }
     }
   };
 
-  const addTagFromInput = async (e?: React.KeyboardEvent | React.MouseEvent) => {
+  const addTagFromInput = (e?: React.KeyboardEvent | React.MouseEvent) => {
     e?.preventDefault();
     const tag = newTag.trim();
     if (tag && !tags.includes(tag)) {
-      await addTag(tag);
+      addTag(tag);
       setNewTag('');
-      // Keep focus on the input after adding a tag
       setTimeout(() => tagInputRef.current?.focus(), 10);
     }
   };
 
-  const removeTag = async (tagToRemove: string) => {
-    const newTags = tags.filter(tag => tag !== tagToRemove);
-    setTags(newTags);
-
-    // Auto-save tags immediately
-    if (song?.id) {
-      try {
-        const updatedSong = { ...song, tags_json: JSON.stringify(newTags) };
-        onSave(updatedSong);
-        console.log('Tags auto-saved after removal in EditSongModal for song:', song.id);
-      } catch (error) {
-        console.error('Failed to auto-save tags after removal in EditSongModal:', error);
-      }
-    }
+  const removeTag = (tagToRemove: string) => {
+    setTags(tags.filter(tag => tag !== tagToRemove));
   };
 
   const updateCustomField = (fieldName: string, value: string | number) => {
@@ -320,32 +295,34 @@ export function EditSongModal({ isOpen, onClose, song, onSave }: EditSongModalPr
 
           <div className="form-group">
             <label>Tags</label>
-            <div className="tags-container">
-              {tags.map((tag) => (
-                <span key={tag} className="tag-item">
-                  {tag}
-                  <button
-                    onClick={() => removeTag(tag)}
-                    className="tag-remove"
-                    type="button"
-                    title="Remove tag"
-                  >
-                    ×
-                  </button>
-                </span>
-              ))}
-            </div>
+            {tags.length > 0 && (
+              <div className="tags-container">
+                {tags.map((tag) => (
+                  <span key={tag} className="tag-item">
+                    {tag}
+                    <button
+                      onClick={() => removeTag(tag)}
+                      className="tag-remove"
+                      type="button"
+                      title="Remove tag"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
             <div className="add-tag">
               <TagAutocomplete
                 value={newTag}
                 placeholder="Add tag..."
                 currentTags={tags}
                 onValueChange={setNewTag}
-                onTagAdd={async (tag) => {
-                  await addTag(tag);
+                onTagAdd={(tag) => {
+                  addTag(tag);
                   setNewTag('');
                 }}
-                className="tag-autocomplete-input"
+                className="tag-input-wrapper"
               />
               <button
                 onClick={(e) => addTagFromInput(e)}
@@ -361,7 +338,7 @@ export function EditSongModal({ isOpen, onClose, song, onSave }: EditSongModalPr
           <div className="song-info">
             <div className="info-item">
               <span className="info-label">Duration:</span>
-              <span className="info-value">{Math.floor(song.duration / 60)}:{(song.duration % 60).toString().padStart(2, '0')}</span>
+              <span className="info-value">{Math.floor(song.duration / 60)}:{Math.floor(song.duration % 60).toString().padStart(2, '0')}</span>
             </div>
             <div className="info-item">
               <span className="info-label">Created:</span>
