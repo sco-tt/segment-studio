@@ -14,7 +14,7 @@ interface SidebarTabsProps {
   currentSongId?: string;
   onSetLoopStart: (time: number) => void;
   onSetLoopEnd: (time: number) => void;
-  onToggleLoop: () => void;
+  onToggleLoop: (loop?: any) => void;
   onSelectLoop: (loop: any) => void;
   onSaveLoop: (name: string, startTime: number, endTime: number) => void;
   onDeleteLoop: (id: string) => void;

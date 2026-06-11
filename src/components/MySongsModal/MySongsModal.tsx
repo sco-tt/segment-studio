@@ -70,13 +70,16 @@ export function MySongsModal({ isOpen, onClose, onSongSelect, initialTagFilter }
       if (initialTagFilter) {
         setActiveTagFilter(initialTagFilter);
       }
+      // Clear any editing state when modal opens
+      setEditingSong(null);
     }
   }, [isOpen, refreshSongs, initialTagFilter]);
 
-  // Clear tag filter when modal closes
+  // Clear states when modal closes
   useEffect(() => {
     if (!isOpen) {
       setActiveTagFilter(null);
+      setEditingSong(null);
     }
   }, [isOpen]);
 

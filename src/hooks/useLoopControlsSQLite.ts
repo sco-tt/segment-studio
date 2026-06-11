@@ -177,18 +177,29 @@ export function useLoopControlsSQLite({ playerRef, isPlaying }: { playerRef: any
     }
   }, [playerRef]);
 
-  const toggleLooping = useCallback(() => {
+  const toggleLooping = useCallback((providedLoop?: LoopSegment) => {
     console.log('🛑 toggleLooping - Current state: isLooping=', isLooping, 'activeLoop=', !!activeLoop);
+    console.log('🛑 toggleLooping - Temp points: tempStart=', tempStart, 'tempEnd=', tempEnd);
+    console.log('🛑 toggleLooping - Provided loop:', !!providedLoop);
 
-    // Check if we have either an active loop OR temp start/end points
-    if (!activeLoop && (tempStart === null || tempEnd === null)) {
-      console.log('🛑 No active loop or temp points available');
+    // Use provided loop if available, otherwise use current activeLoop
+    const loopToUse = providedLoop || activeLoop;
+
+    // Check if we have either a loop (provided or active) OR temp start/end points
+    if (!loopToUse && (tempStart === null || tempEnd === null)) {
+      console.log('🛑 No loop or temp points available');
+      console.log('🛑 Validation failed: loopToUse=', loopToUse, 'tempStart=', tempStart, 'tempEnd=', tempEnd);
       alert('Please set loop start (S) and end (E) points first');
       return;
     }
 
-    // If we have temp points but no active loop, create a temporary active loop
-    if (!activeLoop && tempStart !== null && tempEnd !== null) {
+    // If we have a provided loop but no active loop, set it as active
+    if (providedLoop && !activeLoop) {
+      setActiveLoop(providedLoop);
+    }
+
+    // If we have temp points but no loop, create a temporary active loop
+    if (!loopToUse && tempStart !== null && tempEnd !== null) {
       const tempLoop: LoopSegment = {
         id: 'temp',
         name: `Temp Loop ${tempStart.toFixed(0)}s-${tempEnd.toFixed(0)}s`,
@@ -207,9 +218,9 @@ export function useLoopControlsSQLite({ playerRef, isPlaying }: { playerRef: any
 
       // If starting to loop, seek to loop start
       if (newLooping && playerRef.current) {
-        const loopToUse = activeLoop || { start_time: tempStart!, end_time: tempEnd! };
-        console.log('🛑 Starting loop, seeking to:', loopToUse.start_time);
-        playerRef.current.seekTo(loopToUse.start_time);
+        const finalLoop = loopToUse || activeLoop || { start_time: tempStart!, end_time: tempEnd! };
+        console.log('🛑 Starting loop, seeking to:', finalLoop.start_time);
+        playerRef.current.seekTo(finalLoop.start_time);
         lastSeekTimeRef.current = Date.now();
       } else if (!newLooping) {
         console.log('🛑 Stopping loop');

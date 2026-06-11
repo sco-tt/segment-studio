@@ -53,7 +53,7 @@ export function InstructionsModal({ isOpen, onClose }: InstructionsModalProps) {
                 <span>Set Loop End</span>
               </div>
               <div className="shortcut-item">
-                <kbd>L</kbd>
+                <kbd>R</kbd>
                 <span>Toggle Loop On/Off</span>
               </div>
             </div>
@@ -65,6 +65,10 @@ export function InstructionsModal({ isOpen, onClose }: InstructionsModalProps) {
               <div className="shortcut-item">
                 <kbd>Ctrl/Cmd + →</kbd>
                 <span>Seek forward 5s</span>
+              </div>
+              <div className="shortcut-item">
+                <kbd>Ctrl/Cmd + K</kbd>
+                <span>Search songs</span>
               </div>
               <div className="shortcut-item">
                 <kbd>?</kbd>

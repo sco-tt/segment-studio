@@ -13,7 +13,7 @@ interface LoopControlsProps {
   currentSongId?: string;
   onSetLoopStart: (time: number) => void;
   onSetLoopEnd: (time: number) => void;
-  onToggleLoop: () => void;
+  onToggleLoop: (loop?: LoopSegment) => void;
   onSelectLoop: (loop: LoopSegment | null) => void;
   onSaveLoop: (name: string, startTime: number, endTime: number, routineId?: string) => void;
   onDeleteLoop: (loopId: string) => void;
@@ -160,7 +160,8 @@ export function LoopControls({
     // If not currently looping, start looping
     // If already looping, the loop will automatically switch to the newly selected segment
     if (!isLooping) {
-      onToggleLoop();
+      // Pass the loop directly to avoid race condition with state updates
+      onToggleLoop(loop);
     }
     // Note: If already looping, just selecting the new loop is enough -
     // the loop checking logic will automatically use the new active loop

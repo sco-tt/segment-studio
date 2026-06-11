@@ -10,6 +10,7 @@ import { Mp3Library } from "./components/Mp3Library/Mp3Library";
 import { MySongsModal } from "./components/MySongsModal/MySongsModal";
 import { CustomFieldsModal } from "./components/CustomFieldsModal/CustomFieldsModal";
 import { ToolsModal } from "./components/ToolsModal/ToolsModal";
+import { SearchModal } from "./components/SearchModal/SearchModal";
 import { AudioPlayer, AudioPlayerHandle } from "./components/AudioPlayer/AudioPlayer";
 import { SetlistPrinterModal } from "./components/SetlistPrinterModal/SetlistPrinterModal";
 import { SongInfoPanel } from "./components/SongInfoPanel/SongInfoPanel";
@@ -46,6 +47,7 @@ function App() {
   const customFieldsModal = useModal();
   const toolsModal = useModal();
   const setlistPrinterModal = useModal();
+  const searchModal = useModal();
 
   // State for tag filtering in MySongsModal
   const [mySongsInitialTagFilter, setMySongsInitialTagFilter] = useState<string | null>(null);
@@ -246,7 +248,8 @@ function App() {
     onTogglePlayPause: togglePlayPause,
     onSeekBackward: handleSeekBackward,
     onSeekForward: handleSeekForward,
-    onShowHelp: instructionsModal.open
+    onShowHelp: instructionsModal.open,
+    onOpenSearch: searchModal.open
   });
 
   const formatTime = (seconds: number): string => {
@@ -545,17 +548,13 @@ function App() {
         setCurrentSong(songData);
         setCurrentSpeed(1.0);
 
+        // Clear any displayed loops and stop looping when switching songs
+        clearLoopsDisplay();
+
         // Set volume for MP3 based on settings
         const { defaultVolume, onlyForNewVideos } = getVolumeSettings();
         const volumeToUse = onlyForNewVideos && songData?.volume ? songData.volume : defaultVolume;
         setVolume(volumeToUse);
-
-        // Volume will be applied to AudioPlayer via the ref after it loads
-
-        // Stop any active looping when switching songs
-        if (isLooping) {
-          toggleLooping();
-        }
 
         // Load tags for this song
         try {
@@ -608,10 +607,8 @@ function App() {
               setVideoUrl(songUrl);
               setCurrentSpeed(1.0);
 
-              // Stop any active looping when switching songs
-              if (isLooping) {
-                toggleLooping();
-              }
+              // Clear any displayed loops and stop looping when switching songs
+              clearLoopsDisplay();
 
               // Load segments for this specific song
               await loadSegmentsForRoutine(songId);
@@ -637,10 +634,8 @@ function App() {
               setVideoUrl(songUrl);
               setCurrentSpeed(1.0);
 
-              // Stop any active looping when switching songs
-              if (isLooping) {
-                toggleLooping();
-              }
+              // Clear any displayed loops and stop looping when switching songs
+              clearLoopsDisplay();
 
               // Load segments for this specific song
               await loadSegmentsForRoutine(songId);
@@ -1172,6 +1167,12 @@ function App() {
       <SetlistPrinterModal
         isOpen={setlistPrinterModal.isOpen}
         onClose={setlistPrinterModal.close}
+      />
+
+      <SearchModal
+        isOpen={searchModal.isOpen}
+        onClose={searchModal.close}
+        onSongSelect={handleSongSelect}
       />
 
       <Toast

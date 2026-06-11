@@ -3,11 +3,12 @@ import { useEffect } from 'react';
 interface KeyboardShortcutsProps {
   onSetLoopStart: () => void;
   onSetLoopEnd: () => void;
-  onToggleLoop: () => void;
+  onToggleLoop: (loop?: any) => void;
   onTogglePlayPause: () => void;
   onSeekBackward: () => void;
   onSeekForward: () => void;
   onShowHelp?: () => void;
+  onOpenSearch?: () => void;
 }
 
 export function useKeyboardShortcuts({
@@ -17,7 +18,8 @@ export function useKeyboardShortcuts({
   onTogglePlayPause,
   onSeekBackward,
   onSeekForward,
-  onShowHelp
+  onShowHelp,
+  onOpenSearch
 }: KeyboardShortcutsProps) {
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -83,6 +85,13 @@ export function useKeyboardShortcuts({
             onShowHelp();
           }
           break;
+        case 'k':
+          if ((event.ctrlKey || event.metaKey) && onOpenSearch) {
+            event.preventDefault();
+            event.stopPropagation();
+            onOpenSearch();
+          }
+          break;
       }
     };
 
@@ -134,7 +143,7 @@ export function useKeyboardShortcuts({
       document.removeEventListener('click', handleClick, true);
       clearInterval(focusInterval);
     };
-  }, [onSetLoopStart, onSetLoopEnd, onToggleLoop, onTogglePlayPause, onSeekBackward, onSeekForward, onShowHelp]);
+  }, [onSetLoopStart, onSetLoopEnd, onToggleLoop, onTogglePlayPause, onSeekBackward, onSeekForward, onShowHelp, onOpenSearch]);
 }
 
 export const KEYBOARD_SHORTCUTS = {
@@ -144,5 +153,6 @@ export const KEYBOARD_SHORTCUTS = {
   TOGGLE_LOOP: 'R',
   SEEK_BACKWARD: 'Ctrl/Cmd + ←',
   SEEK_FORWARD: 'Ctrl/Cmd + →',
-  HELP: 'Shift + ?'
+  HELP: 'Shift + ?',
+  SEARCH: 'Ctrl/Cmd + K'
 } as const;
