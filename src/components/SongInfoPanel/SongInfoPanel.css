@@ -213,6 +213,20 @@
   margin-left: 2px;
 }
 
+.add-custom-field-row {
+  margin-top: 6px;
+}
+
+.add-field-select {
+  color: #6b7280;
+  font-style: italic;
+}
+
+.add-field-select option:not([value=""]) {
+  font-style: normal;
+  color: inherit;
+}
+
 /* Dark mode support */
 @media (prefers-color-scheme: dark) {
   .song-info-panel {

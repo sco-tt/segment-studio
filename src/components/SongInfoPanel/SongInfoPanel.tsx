@@ -16,6 +16,7 @@ export function SongInfoPanel({ song, onSongUpdate }: SongInfoPanelProps) {
   const [notes, setNotes] = useState('');
   const [volume, setVolume] = useState(100);
   const [customFieldValues, setCustomFieldValues] = useState<UserSongData>({});
+  const [activatedFieldNames, setActivatedFieldNames] = useState<Set<string>>(new Set());
 
   const { fields: customFields, loading: customFieldsLoading } = useCustomFields();
 
@@ -29,6 +30,7 @@ export function SongInfoPanel({ song, onSongUpdate }: SongInfoPanelProps) {
       // Parse custom field values from freeform_notes
       const parsedCustomFields = parseUserSongData(song.freeform_notes || '');
       setCustomFieldValues(parsedCustomFields);
+      setActivatedFieldNames(new Set());
     } else {
       // Clear when no song
       setTitle('');
@@ -36,6 +38,7 @@ export function SongInfoPanel({ song, onSongUpdate }: SongInfoPanelProps) {
       setNotes('');
       setVolume(100);
       setCustomFieldValues({});
+      setActivatedFieldNames(new Set());
     }
   }, [song]);
 
@@ -83,6 +86,7 @@ export function SongInfoPanel({ song, onSongUpdate }: SongInfoPanelProps) {
       setVolume(song.volume || 100);
       const parsedCustomFields = parseUserSongData(song.freeform_notes || '');
       setCustomFieldValues(parsedCustomFields);
+      setActivatedFieldNames(new Set());
     }
     setIsEditing(false);
   };
@@ -218,78 +222,133 @@ export function SongInfoPanel({ song, onSongUpdate }: SongInfoPanelProps) {
             </div>
 
             {/* Dynamic Custom Fields */}
-            {!customFieldsLoading && customFields.length > 0 && (
-              <div className="custom-fields-section">
-                <h4 className="custom-fields-title">Custom Fields</h4>
-                {customFields
-                  .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
-                  .map((field) => {
-                    const fieldValue = customFieldValues[field.name] || field.default_value || '';
+            {!customFieldsLoading && (() => {
+              const definedFieldNames = new Set(customFields.map(f => f.name));
+              const orphanedKeys = Object.keys(customFieldValues).filter(key => !definedFieldNames.has(key));
+              const formatLabel = (key: string) => key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 
-                    return (
-                      <div key={field.id} className="form-group">
-                        <label htmlFor={`info-custom-field-${field.id}`}>
-                          {field.display_name}
-                          {field.is_required && <span className="required">*</span>}
-                        </label>
+              // Show a field if: required, has a stored value, or user activated it this session
+              const shownFields = customFields
+                .filter(f => f.is_required || f.name in customFieldValues || activatedFieldNames.has(f.name))
+                .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
 
-                        {field.field_type === 'text' && (
-                          <input
-                            id={`info-custom-field-${field.id}`}
-                            type="text"
-                            value={String(fieldValue)}
-                            onChange={(e) => updateCustomField(field.name, e.target.value)}
-                            className="form-input"
-                            placeholder={`Enter ${field.display_name.toLowerCase()}`}
-                            required={field.is_required}
-                          />
-                        )}
+              // Fields available to add via the dropdown
+              const addableFields = customFields.filter(f =>
+                !f.is_required && !(f.name in customFieldValues) && !activatedFieldNames.has(f.name)
+              );
 
-                        {field.field_type === 'number' && (
-                          <input
-                            id={`info-custom-field-${field.id}`}
-                            type="number"
-                            value={String(fieldValue)}
-                            onChange={(e) => updateCustomField(field.name, e.target.value ? Number(e.target.value) : '')}
-                            className="form-input"
-                            placeholder={`Enter ${field.display_name.toLowerCase()}`}
-                            required={field.is_required}
-                          />
-                        )}
+              const hasContent = shownFields.length > 0 || orphanedKeys.length > 0 || addableFields.length > 0;
+              if (!hasContent) return null;
 
-                        {field.field_type === 'select' && field.field_options && (
-                          <select
-                            id={`info-custom-field-${field.id}`}
-                            value={String(fieldValue)}
-                            onChange={(e) => updateCustomField(field.name, e.target.value)}
-                            className="form-input"
-                            required={field.is_required}
-                          >
-                            <option value="">Choose {field.display_name.toLowerCase()}</option>
-                            {field.field_options.map((option: string) => (
-                              <option key={option.trim()} value={option.trim()}>
-                                {option.trim()}
-                              </option>
-                            ))}
-                          </select>
-                        )}
+              const renderFieldInput = (field: typeof customFields[0]) => {
+                const fieldValue = field.name in customFieldValues
+                  ? customFieldValues[field.name]
+                  : (activatedFieldNames.has(field.name) ? '' : (field.default_value || ''));
 
-                        {field.field_type === 'textarea' && (
-                          <textarea
-                            id={`info-custom-field-${field.id}`}
-                            value={String(fieldValue)}
-                            onChange={(e) => updateCustomField(field.name, e.target.value)}
-                            className="form-textarea"
-                            placeholder={`Enter ${field.display_name.toLowerCase()}`}
-                            rows={3}
-                            required={field.is_required}
-                          />
-                        )}
-                      </div>
-                    );
-                  })}
-              </div>
-            )}
+                return (
+                  <div key={field.id} className="form-group">
+                    <label htmlFor={`info-custom-field-${field.id}`}>
+                      {field.display_name}
+                      {field.is_required && <span className="required">*</span>}
+                    </label>
+
+                    {field.field_type === 'text' && (
+                      <input
+                        id={`info-custom-field-${field.id}`}
+                        type="text"
+                        value={String(fieldValue)}
+                        onChange={(e) => updateCustomField(field.name, e.target.value)}
+                        className="form-input"
+                        placeholder={`Enter ${field.display_name.toLowerCase()}`}
+                        required={field.is_required}
+                      />
+                    )}
+
+                    {field.field_type === 'number' && (
+                      <input
+                        id={`info-custom-field-${field.id}`}
+                        type="number"
+                        value={String(fieldValue)}
+                        onChange={(e) => updateCustomField(field.name, e.target.value ? Number(e.target.value) : '')}
+                        className="form-input"
+                        placeholder={`Enter ${field.display_name.toLowerCase()}`}
+                        required={field.is_required}
+                      />
+                    )}
+
+                    {field.field_type === 'select' && field.field_options && (
+                      <select
+                        id={`info-custom-field-${field.id}`}
+                        value={String(fieldValue)}
+                        onChange={(e) => updateCustomField(field.name, e.target.value)}
+                        className="form-input"
+                        required={field.is_required}
+                      >
+                        <option value="">Choose {field.display_name.toLowerCase()}</option>
+                        {field.field_options.map((option: string) => (
+                          <option key={option.trim()} value={option.trim()}>
+                            {option.trim()}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+
+                    {field.field_type === 'textarea' && (
+                      <textarea
+                        id={`info-custom-field-${field.id}`}
+                        value={String(fieldValue)}
+                        onChange={(e) => updateCustomField(field.name, e.target.value)}
+                        className="form-textarea"
+                        placeholder={`Enter ${field.display_name.toLowerCase()}`}
+                        rows={3}
+                        required={field.is_required}
+                      />
+                    )}
+                  </div>
+                );
+              };
+
+              return (
+                <div className="custom-fields-section">
+                  <h4 className="custom-fields-title">Custom Fields</h4>
+
+                  {shownFields.map(renderFieldInput)}
+
+                  {orphanedKeys.map((key) => (
+                    <div key={key} className="form-group">
+                      <label htmlFor={`info-orphan-field-${key}`}>{formatLabel(key)}</label>
+                      <input
+                        id={`info-orphan-field-${key}`}
+                        type="text"
+                        value={String(customFieldValues[key] || '')}
+                        onChange={(e) => updateCustomField(key, e.target.value)}
+                        className="form-input"
+                      />
+                    </div>
+                  ))}
+
+                  {addableFields.length > 0 && (
+                    <div className="add-custom-field-row">
+                      <select
+                        className="form-input add-field-select"
+                        value=""
+                        onChange={(e) => {
+                          const fieldName = e.target.value;
+                          if (fieldName) {
+                            setActivatedFieldNames(prev => new Set([...prev, fieldName]));
+                          }
+                        }}
+                      >
+                        <option value="">+ Add a custom field…</option>
+                        {addableFields.map(f => (
+                          <option key={f.id} value={f.name}>{f.display_name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         )}
       </div>

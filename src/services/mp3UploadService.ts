@@ -226,9 +226,9 @@ export class Mp3UploadService {
   async getAudioUrl(fileId: string, stemGroupId?: string): Promise<string> {
     try {
       const params = {
-        fileId: fileId,
-        isStemGroup: !!stemGroupId,
-        stemGroupId: stemGroupId || null
+        file_id: fileId,
+        is_stem_group: !!stemGroupId,
+        stem_group_id: stemGroupId || null
       };
       console.log('getAudioUrl: Calling Tauri command with params:', params);
       const audioUrl = await invoke<string>('get_audio_file_url', params);

@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use tauri::{command, Manager};
 use uuid::Uuid;
 
+#[allow(dead_code)]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AudioFileInfo {
     pub id: String,
@@ -50,7 +51,7 @@ pub async fn upload_single_audio_file(
 
     // Get file info
     let metadata = fs::metadata(&file_path).map_err(|e| e.to_string())?;
-    let file_size = metadata.len();
+    let _file_size = metadata.len();
     let original_filename = source_path
         .file_name()
         .and_then(|n| n.to_str())
@@ -58,7 +59,7 @@ pub async fn upload_single_audio_file(
         .to_string();
 
     // Validate file format
-    let file_format = get_audio_format(&original_filename)?;
+    let _file_format = get_audio_format(&original_filename)?;
 
     // Generate unique IDs
     let file_id = Uuid::new_v4().to_string();
@@ -84,7 +85,7 @@ pub async fn upload_single_audio_file(
     fs::copy(&file_path, &dest_path).map_err(|e| format!("Failed to copy file: {}", e))?;
 
     // Get audio duration (simplified - could use proper audio library later)
-    let duration = estimate_audio_duration(&dest_path)?;
+    let _duration = estimate_audio_duration(&dest_path)?;
 
     // Database operations will be handled by frontend service
 
@@ -208,17 +209,17 @@ pub async fn upload_stem_group(
 #[command]
 pub async fn get_audio_file_url(
     app: tauri::AppHandle,
-    fileId: String,
-    isStemGroup: bool,
-    stemGroupId: Option<String>,
+    file_id: String,
+    is_stem_group: bool,
+    stem_group_id: Option<String>,
 ) -> Result<String, String> {
     let app_data_dir = app
         .path()
         .app_data_dir()
         .map_err(|e: tauri::Error| e.to_string())?;
 
-    let search_dir = if isStemGroup {
-        if let Some(group_id) = stemGroupId {
+    let search_dir = if is_stem_group {
+        if let Some(group_id) = stem_group_id {
             app_data_dir.join("audio_files").join("stems").join(group_id)
         } else {
             return Err("Stem group ID required for stem files".to_string());
@@ -227,8 +228,8 @@ pub async fn get_audio_file_url(
         app_data_dir.join("audio_files").join("single")
     };
 
-    // Debug: Print search directory and fileId
-    println!("Searching for fileId '{}' in directory: {:?}", fileId, search_dir);
+    // Debug: Print search directory and file_id
+    println!("Searching for file_id '{}' in directory: {:?}", file_id, search_dir);
 
     // Check if search directory exists
     if !search_dir.exists() {
@@ -246,7 +247,7 @@ pub async fn get_audio_file_url(
                 let filename = entry.file_name().to_string_lossy().to_string();
                 found_files.push(filename.clone());
 
-                if filename.contains(&fileId) {
+                if filename.contains(&file_id) {
                     let file_path = entry.path();
                     println!("Found matching file: {} -> {:?}", filename, file_path);
                     // Return a custom audio:// protocol URL
@@ -265,7 +266,7 @@ pub async fn get_audio_file_url(
         return Err(format!("Failed to read audio directory: {:?}", search_dir));
     }
 
-    Err(format!("Audio file not found. Searched for '{}' in {:?}", fileId, search_dir))
+    Err(format!("Audio file not found. Searched for '{}' in {:?}", file_id, search_dir))
 }
 
 #[command]
