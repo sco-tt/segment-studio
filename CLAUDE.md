@@ -273,6 +273,11 @@ Switch to Electron if critical blockers discovered in Phase 1 or performance tar
 - Browser version at localhost:1420 uses mocks and limited functionality
 
 
+### Planning
+- Always write plans to a markdown file using checkbox task lists (`- [ ]` / `- [x]`)
+- Include dates: a created date at the top, and a completion date on each finished task (e.g. `- [x] Add loop UI (2026-10-28)`)
+- The markdown file is the source of truth for task state: update checkboxes as work starts and finishes, and track progress against the file rather than in chat
+
 ### Workflow Pattern
 1. Load YouTube URL → Creates temporary routine with default settings
 2. Adjust speed, set loops, add notes → Still temporary
