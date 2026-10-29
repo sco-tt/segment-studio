@@ -1,11 +1,20 @@
 .setlist-printer-modal {
-  max-width: 800px;
-  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+/* Force the modal container to fill the viewport when this modal is inside it —
+   otherwise .modal-container only grows to fit content and the panes can't stretch. */
+.modal-container:has(.setlist-printer-modal) {
+  height: calc(100vh - 40px);
 }
 
 .printer-header {
   text-align: center;
-  margin-bottom: 2rem;
+  margin-bottom: 1rem;
+  flex: 0 0 auto;
 }
 
 .printer-header h2 {
@@ -21,11 +30,12 @@
 }
 
 .filter-section {
-  margin-bottom: 2rem;
-  padding: 1.5rem;
+  margin-bottom: 1rem;
+  padding: 1rem 1.25rem;
   background: var(--card-bg);
   border-radius: 12px;
   border: 1px solid var(--border-color);
+  flex: 0 0 auto;
 }
 
 .filter-section h3 {
@@ -171,8 +181,9 @@
   display: flex;
   justify-content: flex-end;
   gap: 1rem;
-  padding-top: 2rem;
+  padding-top: 1rem;
   border-top: 1px solid var(--border-color);
+  flex: 0 0 auto;
 }
 
 .print-btn {
@@ -219,6 +230,286 @@
   background: var(--hover-bg);
   border-color: var(--text-muted);
   color: var(--text-color);
+}
+
+/* Saved setlists */
+.saved-setlists-section {
+  margin-bottom: 1.5rem;
+}
+
+.saved-setlists-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.saved-setlists-header h3 {
+  margin: 0;
+  color: var(--text-color);
+  font-size: 1.1rem;
+}
+
+.saved-setlists-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.saved-setlist-item {
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--input-bg);
+  overflow: hidden;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.saved-setlist-item.active {
+  border-color: var(--primary-color);
+  background: rgba(0, 123, 255, 0.08);
+}
+
+.saved-setlist-load {
+  background: transparent;
+  border: none;
+  color: var(--text-color);
+  padding: 0.4rem 0.6rem;
+  cursor: pointer;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.85rem;
+}
+
+.saved-setlist-name {
+  font-weight: 600;
+}
+
+.saved-setlist-meta {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.saved-setlist-delete {
+  background: transparent;
+  border: none;
+  border-left: 1px solid var(--border-color);
+  color: var(--text-muted);
+  padding: 0 0.5rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.saved-setlist-delete:hover {
+  background: rgba(220, 53, 69, 0.12);
+  color: #dc3545;
+}
+
+.empty-hint {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+/* Two-pane layout */
+.setlist-panes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.pane {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.pane .song-list {
+  max-height: none;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* Ordered (droppable) list */
+.ordered-song-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  overflow-y: auto;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--card-bg);
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.ordered-song-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid var(--border-color-light);
+  cursor: grab;
+  user-select: none;
+  transition: background-color 0.15s ease, transform 0.1s ease;
+}
+
+.ordered-song-item:last-child {
+  border-bottom: none;
+}
+
+.ordered-song-item:hover {
+  background: var(--hover-bg);
+}
+
+.ordered-song-item.dragging {
+  opacity: 0.5;
+  cursor: grabbing;
+}
+
+.ordered-song-item.drop-target {
+  box-shadow: inset 0 2px 0 0 var(--primary-color);
+  background: rgba(0, 123, 255, 0.06);
+}
+
+.drag-handle {
+  color: var(--text-muted);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: grab;
+  padding-right: 0.25rem;
+  letter-spacing: -2px;
+}
+
+.order-number {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  min-width: 1.75rem;
+  text-align: right;
+}
+
+.order-number-input {
+  width: 2.5rem;
+  padding: 2px 4px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--input-bg);
+  color: var(--text-color);
+  font-size: 0.85rem;
+  text-align: center;
+  cursor: text;
+  -moz-appearance: textfield;
+}
+
+.order-number-input::-webkit-outer-spin-button,
+.order-number-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.order-number-input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.15);
+}
+
+.remove-from-order {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0.25rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+
+.remove-from-order:hover {
+  background: rgba(220, 53, 69, 0.12);
+  color: #dc3545;
+}
+
+/* Save row */
+.save-setlist-section {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  flex: 0 0 auto;
+}
+
+.setlist-name-input {
+  flex: 1;
+  min-width: 200px;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--input-bg);
+  color: var(--text-color);
+  font-size: 0.9rem;
+}
+
+.save-setlist-btn {
+  padding: 0.5rem 1rem;
+  background: #28a745;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.save-setlist-btn:hover:not(:disabled) {
+  background: #218838;
+}
+
+.save-setlist-btn:disabled {
+  background: var(--button-disabled-bg);
+  color: var(--button-disabled-text);
+  cursor: not-allowed;
+}
+
+.save-status {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+@media (max-width: 700px) {
+  .setlist-panes {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Dark mode adjustments */
+:root[data-theme="dark"] .song-list,
+:root[data-theme="dark"] .ordered-song-list {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color) transparent;
+}
+
+:root[data-theme="dark"] .ordered-song-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+:root[data-theme="dark"] .ordered-song-list::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
 }
 
 /* Dark mode adjustments */
